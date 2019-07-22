@@ -14,9 +14,9 @@ Host in the map table, respond with ip.
 
 # Using
 
-'''shell
+```shell
 python main.py [-d|-dd] --addr [dns-server-ipaddr] --filename [filename]
-'''
+```
 
 *-d* or *-dd* to set logging level, note that they are exclusive.
 
