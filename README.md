@@ -4,7 +4,7 @@ An DNS name server toy, homework of computer network course in bupt.
 
 # Feature
 
-Read * dnsrelay.txt * as a mapping table (host2ip). When receiving a DNS A problem, there are three cases:
+Read *dnsrelay.txt* as a mapping table (host2ip). When receiving a DNS A problem, there are three cases:
 
 The host is not in the mapping table, the problem is resent to the remote name server to get the ip(RR from remote name server), and then it is responded to the client.
 
