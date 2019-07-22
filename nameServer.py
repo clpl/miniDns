@@ -2,6 +2,7 @@ import socketserver
 import struct
 import socket
 import logging
+import threading
 
 logging.basicConfig(format="%(asctime)s %(name)s:%(levelname)s:%(message)s", datefmt="%d-%M-%Y %H:%M:%S", level=logging.DEBUG)
 
@@ -11,6 +12,8 @@ class nameServer(socketserver.BaseRequestHandler):
 	url2ip = {}
 	args = None
 	remote_addr = '202.106.0.20'
+	cache_TTL = {}
+	TTL_watch = 0
 
 	# handle socket
 	def handle(self):
@@ -45,15 +48,30 @@ class nameServer(socketserver.BaseRequestHandler):
 			else:
 				# not found
 				log.debug('request from remote:'+ name)
-				sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-				sock.sendto(data, (self.remote_addr, 53))
-				udp_rece = sock.recvfrom(1024)
-				self.__parseData(udp_rece[0])
-				ip = self.url2ip[name]
-				res200 = self.__200Data(header, ip, query_info)
-				sock.sendto(res200, self.client_address)
-				sock.close()
 
+				sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+				
+				
+				for times in range(3):
+					try:
+						sock.sendto(data, (self.remote_addr, 53))
+						udp_rece = sock.recvfrom(1024)
+						self.__parseData(udp_rece[0])
+						if name in self.url2ip.keys():
+							ip = self.url2ip[name]
+							res = self.__200Data(header, ip, query_info)
+						else:
+							res = self.__404data(header)
+
+						sock.sendto(res, self.client_address)
+						sock.close()
+						return
+					except:
+						pass
+						
+				sock.close()
+				
+				
 
 	# not found message, similar to HTTP 404 state code
 	def __404data(self, header):
@@ -123,6 +141,7 @@ class nameServer(socketserver.BaseRequestHandler):
 			else:
 				_, pos = self.__geturl(data, pos)
 			r_type, r_class, r_TTL, r_DataLength = struct.unpack('>HHLH', data[pos:pos + 10])
+
 			pos += 10
 			if r_type == 1:
 				ip_list = struct.unpack('BBBB', data[pos: pos + r_DataLength])
@@ -131,6 +150,9 @@ class nameServer(socketserver.BaseRequestHandler):
 				self.url2ip[url] = ip
 				
 			pos = pos + r_DataLength
+
+			self.cache_TTL[url] = r_TTL
+
 			log.debug('receive RR: %d %d %d %d'%(r_type, r_class, r_TTL, r_DataLength))
 			
 		for i in range(_author):
@@ -162,7 +184,12 @@ class nameServer(socketserver.BaseRequestHandler):
 	# init and read table from file
 	def load_file(self, file_path = './dnsrelay.txt'):
 		print(self.args)
-		NOINFO = 5
+
+		# boot cache timeout delete
+		self.cache_time_out()
+
+		# NOINFO
+		NOINFO = 25
 		log.setLevel(NOINFO)
 
 		if self.args.d == True:
@@ -183,4 +210,10 @@ class nameServer(socketserver.BaseRequestHandler):
 					break
 				ip, name = line.strip().split()
 				self.url2ip[name] = ip
-
+	
+	def cache_time_out(self):
+		self.TTL_watch += 60
+		for key, value in self.cache_TTL.items():
+			if value < self.TTL_watch:
+				del self.url2ip[key]
+		threading.Timer(60,self.cache_time_out).start()

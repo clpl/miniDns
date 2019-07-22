@@ -7,9 +7,8 @@ import argparse
 from nameServer import nameServer
 import socketserver
 
-print(nameServer)
-# parse args
-# return dict(args)
+
+
 def getArg():
 	parser = argparse.ArgumentParser()
 
@@ -18,7 +17,7 @@ def getArg():
 	exclusive_group.add_argument("-dd", action="store_true", help="Level-2 Debuging")
 
 	parser.add_argument("--addr", help="DNS server IP address", type=str)
-	parser.add_argument("--filename", help="\"log.txt\"", type=str)
+	parser.add_argument("--filename", help="\"dnsrelay.txt\"", type=str)
 	return parser.parse_args()
 
 
